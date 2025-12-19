@@ -1,0 +1,25 @@
+# Webseitenanalyse
+selenium
+webdriver-manager
+beautifulsoup4
+requests
+
+# YouTube API Zugriff
+google-api-python-client
+google-auth
+google-auth-oauthlib
+google-auth-httplib2
+
+# OBS WebSocket-Steuerung
+websocket-client
+obsws-python
+
+# YAML-Konfiguration
+pyyaml
+
+#FTP Upload für Webseite
+paramiko
+
+#Monitoring von Python Prozessen
+psutil
+

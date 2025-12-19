@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>PTZ Web Remote</title>
+  <style>
+    :root{
+      --bg:#0f1115;--fg:#eaeef2;--muted:#8a94a6;--accent:#00b3b0;
+      --card:#151924;--btn:#1b2130;--btnHover:#22304a;--border:#2a3347;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.4 system-ui,Segoe UI,Roboto,Arial}
+    header{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:#0c0e13;position:sticky;top:0;z-index:3}
+    header .title{font-weight:600}
+    header .bar{display:flex;gap:8px;align-items:center}
+    .pill{padding:2px 8px;border-radius:999px;background:#0c0e13;border:1px solid var(--border);color:var(--muted);font-size:12px}
+    .ok{color:#6fe29b}.warn{color:#ffd36b}.err{color:#ff8a8a}
+
+    /* oberes Drittel: Video */
+    .video-wrap{position:relative;width:100%;height:33vh;background:#000}
+    video{position:absolute;inset:0;width:100%;height:100%;background:#000}
+
+    /* Grids */
+    .section{padding:12px}
+    .grid8{display:grid;gap:10px;grid-template-columns:repeat(4,1fr)}
+    @media (max-width:900px){.grid8{grid-template-columns:repeat(2,1fr)}}
+    .grid3{display:grid;gap:10px;grid-template-columns:repeat(3,1fr)}
+
+    /* Buttons */
+    .btn{display:flex;align-items:center;justify-content:center;background:var(--btn);border:1px solid var(--border);border-radius:14px;cursor:pointer;transition:.15s;user-select:none;min-height:54px;text-align:center;padding:10px}
+    .btn:hover{background:var(--btnHover)} .btn:active{transform:scale(0.98)}
+    .btn .lbl{font-size:14px}
+    .btn.scene{font-weight:600}
+
+    /* Presets mit Bild */
+    .preset{position:relative;height:90px;padding:0;background:#111;border:1px solid var(--border);overflow:hidden}
+    .preset .bg{position:absolute;inset:0;background-size:cover;background-position:center;filter:brightness(0.78)}
+    .preset .overlay{position:absolute;left:8px;bottom:6px;background:rgba(0,0,0,0.45);padding:3px 7px;border-radius:6px;font-size:13px;color:#fff;backdrop-filter:saturate(120%) blur(2px)}
+    .preset:after{content:"";position:absolute;inset:0;box-shadow:inset 0 0 0 1px rgba(255,255,255,0.04);border-radius:14px}
+
+    .footer{padding:10px 12px;color:var(--muted);font-size:12px}
+  </style>
+</head>
+<body>
+  <header>
+    <div class="title">PTZ Web Remote</div>
+    <div class="bar">
+      <span id="wsState" class="pill">WS: …</span>
+      <span id="bridgeState" class="pill">Bridge: …</span>
+    </div>
+  </header>
+
+  <!-- Video oben (MJPEG) -->
+<div class="video-wrap">
+  <img id="mjpeg"
+       src="http://127.0.0.1:8080/feed.mjpg"
+       alt="Live"
+       style="width:100%;height:100%;object-fit:cover;display:block;border:0" />
+</div>
+
+
+  <!-- 8 Presets mit Bild + Text -->
+  <div class="section">
+    <div class="grid8">
+      <div class="btn preset" data-ptz="preset:1">
+        <div class="bg" style="background-image:url('bilder/kirche.jpg')"></div>
+        <div class="overlay">Kirche</div>
+      </div>
+      <div class="btn preset" data-ptz="preset:2">
+        <div class="bg" style="background-image:url('bilder/altarraum.jpg')"></div>
+        <div class="overlay">Altarraum</div>
+      </div>
+      <div class="btn preset" data-ptz="preset:3">
+        <div class="bg" style="background-image:url('bilder/sedile.jpg')"></div>
+        <div class="overlay">Sedile</div>
+      </div>
+      <div class="btn preset" data-ptz="preset:4">
+        <div class="bg" style="background-image:url('bilder/ambo.jpg')"></div>
+        <div class="overlay">Ambo</div>
+      </div>
+      <div class="btn preset" data-ptz="preset:5">
+        <div class="bg" style="background-image:url('bilder/altar_nah.jpg')"></div>
+        <div class="overlay">Altar nah</div>
+      </div>
+      <div class="btn preset" data-ptz="preset:6">
+        <div class="bg" style="background-image:url('bilder/altar_fern.jpg')"></div>
+        <div class="overlay">Altar fern</div>
+      </div>
+      <div class="btn preset" data-ptz="preset:7">
+        <div class="bg" style="background-image:url('bilder/hochaltar.jpg')"></div>
+        <div class="overlay">Hochaltar</div>
+      </div>
+      <div class="btn preset" data-ptz="preset:8">
+        <div class="bg" style="background-image:url('bilder/dreifaltigkeit.jpg')"></div>
+        <div class="overlay">Dreifaltigkeit</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Szenen: Anfang / Gottesdienst / Ende -->
+  <div class="section">
+    <div class="grid3">
+      <div class="btn scene" data-cmd="obs:scene:Anfang"><span class="lbl">Anfang</span></div>
+      <div class="btn scene" data-cmd="obs:scene:Gottesdienst"><span class="lbl">Gottesdienst</span></div>
+      <div class="btn scene" data-cmd="obs:scene:Ende"><span class="lbl">Ende</span></div>
+    </div>
+  </div>
+
+  <div class="footer">Hinweis: Trage unten HOST/TOKEN ein. Bilder unter <code>/var/www/html/bilder/</code> ablegen.</div>
+
+  <script>
+    // ==== KONFIGURATION ANPASSEN ====
+    const BRIDGE_WS  = "ws://YOUR_BRIDGE_HOST:8765/ws";  // z.B. ws://192.168.2.100:8765/ws
+    const BRIDGE_HTTP= "http://YOUR_BRIDGE_HOST:8765";   // z.B. http://192.168.2.100:8765
+    const AUTH_TOKEN = "CHANGE_ME";                      // mit Server abstimmen
+
+    // ==== Status-Badges ====
+    const $wsState = document.getElementById('wsState');
+    const $bridgeState = document.getElementById('bridgeState');
+    function setWsBadge(ok, msg){ $wsState.textContent = ok? 'WS: OK' : ('WS: ' + (msg||'Down')); $wsState.className='pill ' + (ok?'ok':'err'); }
+    function setBridgeBadge(ok, msg){ $bridgeState.textContent = ok? 'Bridge: OK' : ('Bridge: ' + (msg||'Down')); $bridgeState.className='pill ' + (ok?'ok':'warn'); }
+
+    // ==== WebSocket + Fallback ====
+    let sock; let wsOk=false;
+    function connectWS(){
+      try{
+        sock = new WebSocket(BRIDGE_WS + `?token=${encodeURIComponent(AUTH_TOKEN)}`);
+        sock.onopen = () => setWsBadge(wsOk=true);
+        sock.onclose = () => setWsBadge(wsOk=false,'Closed');
+        sock.onerror = () => setWsBadge(wsOk=false,'Error');
+        sock.onmessage = ev => { try{ const m=JSON.parse(ev.data); if(m.type==='pong') setBridgeBadge(true); }catch(e){} };
+      }catch(e){ setWsBadge(false,'Init'); }
+    }
+    connectWS();
+    setInterval(()=>{ try{ sock?.readyState===1 && sock.send(JSON.stringify({type:'ping'})); }catch{} }, 5000);
+
+    async function sendCmd(payload){
+      const msg = JSON.stringify(payload);
+      if(wsOk && sock && sock.readyState===1){ sock.send(msg); return; }
+      try{
+        const res = await fetch(BRIDGE_HTTP + "/api/command", {
+          method:'POST', headers:{'Content-Type':'application/json','X-Auth':AUTH_TOKEN}, body:msg
+        });
+        setBridgeBadge(res.ok);
+      }catch(e){ setBridgeBadge(false,'HTTP'); }
+    }
+
+    // ==== Button-Handling ====
+    function handlePTZ(action){ sendCmd({type:'ptz', action}); }
+    function handleOBS(cmd){
+      const [_, what, arg] = cmd.split(':'); // obs:scene:Name  | obs:hotkey:Shift+F1
+      sendCmd({type:'obs', what, arg});
+    }
+
+    document.querySelectorAll('.preset').forEach(el=>{
+      const act = el.getAttribute('data-ptz');
+      el.addEventListener('click', ()=> handlePTZ(act));
+    });
+    document.querySelectorAll('.scene').forEach(el=>{
+      const cmd = el.getAttribute('data-cmd');
+      el.addEventListener('click', ()=> handleOBS(cmd));
+    });
+  </script>
+</body>
+</html>

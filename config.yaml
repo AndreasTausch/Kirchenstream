@@ -1,0 +1,35 @@
+obs:
+  host: localhost
+  port: 4455
+  password_file: secrets/obs_credentials.json
+  scene_start: Beginn
+  scene_live: Gottesdienst
+  text_source: Titel
+  stream_start_offset_minutes: 5
+  scene_switch_offset_minutes: 1
+  stream_execution_grace_minutes: 5
+telegram:
+  credentials_file: secrets/telegram_stgisela.json
+  credentials_file_anzeige: secrets/telegram_anzeige.json
+  notify_on_start: true
+  notify_on_end: true
+  notify_summary_start: true
+  notify_summary_end: true
+  notify_errors: true
+  send_xml_file: true
+email:
+  credentials_file: secrets/mail_credentials.json
+  notify: true
+paths:
+  youtube_output_dir: youtube_streams_geplant
+  xml_output_dir: data
+  log_file: logs/streamlog.txt
+web:
+  church_id: 6433
+  target_offset_days: 11
+  keywords:
+  - yt
+  - youtube
+  - live
+  - stream
+  - gottesdienst
